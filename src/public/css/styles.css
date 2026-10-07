@@ -111,6 +111,7 @@ body.auth-body main.auth-layout { width: 100%; padding: 0; border-radius: 0; bac
 .report-item .report-status { display: inline-block; padding: .15rem .45rem; border-radius: 999px; background: #155eef33; color: #7dd3fc; font-size: .72rem; font-weight: 800; }
 .report-item .report-date { color: #8ea7ce; font-size: .78rem; }
 .report-item a { color: #7dd3fc; font-weight: 700; }
+.report-actions { display: flex; gap: .5rem; margin-top: .75rem; }
 
 @media (max-width: 760px) {
   .app-shell { grid-template-columns: 1fr; }

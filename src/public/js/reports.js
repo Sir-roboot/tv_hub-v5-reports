@@ -33,15 +33,67 @@ function createReportItem(report) {
   created.className = 'report-date';
   created.textContent = new Date(report.createdAt).toLocaleString();
   item.append(channel, reason, description, status, created);
-  if (report.evidenceUrl) {
+  const evidenceUrls = report.evidenceUrls || (report.evidenceUrl ? [report.evidenceUrl] : []);
+  let evidenceIndex = 1;
+  for (const evidenceUrl of evidenceUrls) {
     const evidence = document.createElement('a');
-    evidence.href = report.evidenceUrl;
+    evidence.href = evidenceUrl;
     evidence.target = '_blank';
     evidence.rel = 'noopener';
-    evidence.textContent = 'View evidence image';
+    evidence.textContent = `View evidence image ${evidenceIndex++}`;
     item.append(evidence);
   }
+
+  const actions = document.createElement('div');
+  actions.className = 'report-actions';
+  const editButton = document.createElement('button');
+  editButton.className = 'report-button';
+  editButton.type = 'button';
+  editButton.textContent = 'Edit';
+  editButton.addEventListener('click', () => editReport(report));
+  const deleteButton = document.createElement('button');
+  deleteButton.className = 'report-button';
+  deleteButton.type = 'button';
+  deleteButton.textContent = 'Delete';
+  deleteButton.addEventListener('click', () => deleteReport(report._id));
+  actions.append(editButton, deleteButton);
+  item.append(actions);
   return item;
+}
+
+async function editReport(report) {
+  const reason = window.prompt(
+    'Reason (STREAM_DOES_NOT_LOAD, WRONG_CHANNEL, AUDIO_PROBLEM, VIDEO_PROBLEM, OTHER):',
+    report.reason
+  );
+  if (reason === null) return;
+  const description = window.prompt('Description:', report.description);
+  if (description === null) return;
+  const status = window.prompt('Status (OPEN, IN_PROGRESS, RESOLVED):', report.status);
+  if (status === null) return;
+
+  const response = await fetch(`/api/reports/${report._id}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, description, status })
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    reportsStatus.textContent = payload.error?.message || 'Could not update report.';
+    return;
+  }
+  await loadReports();
+}
+
+async function deleteReport(reportId) {
+  if (!window.confirm('Delete this report?')) return;
+  const response = await fetch(`/api/reports/${reportId}`, { method: 'DELETE' });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    reportsStatus.textContent = payload.error?.message || 'Could not delete report.';
+    return;
+  }
+  await loadReports();
 }
 
 async function loadReports() {
@@ -62,24 +114,15 @@ async function submitReport(event) {
   formData.append('channelId', channelId);
   formData.append('reason', document.querySelector('#report-reason').value);
   formData.append('description', document.querySelector('#report-description').value);
-  const evidence =
-    document.querySelector('#report-evidence').files[0];
-  // TODO v4.5 4:
-  // Completa el nombre del campo utilizado para enviar la imagen.
-  // Objetivo: relacionar el archivo del formulario con upload.single().
-  // Resultado esperado: Multer reconocerá la evidencia enviada por el navegador.
-  if (evidence) {
-    formData.append('________', evidence);
+  const evidenceFiles = document.querySelector('#report-evidence').files;
+  for (const file of evidenceFiles) {
+    formData.append('evidence', file);
   }
 
   reportFormStatus.textContent = 'Submitting report…';
-  // TODO v4.5 5:
-  // Completa el body de la petición utilizando el FormData construido.
-  // Objetivo: enviar los campos de texto y la evidencia en una misma solicitud.
-  // Resultado esperado: POST /api/reports recibirá correctamente multipart/form-data.
   const response = await fetch('/api/reports', {
     method: 'POST',
-    body: ________
+    body: formData
   });
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
